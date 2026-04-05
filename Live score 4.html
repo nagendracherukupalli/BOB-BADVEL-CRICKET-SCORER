@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOB CRICKET SCORER - EMAIL AUTH</title>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <style>
+        /* CSS stays the same as your previous version to keep the look consistent */
+        :root { --primary: #1b5e20; --secondary: #c62828; --accent: #ffeb3b; --light: #f5f5f5; --white: #ffffff; --dark: #333; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--light); margin: 0; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 500px; background: var(--white); min-height: 100vh; box-shadow: 0 0 20px rgba(0,0,0,0.1); position: relative; padding-bottom: 120px; display: flex; flex-direction: column;}
+        .screen { display: none; padding: 15px; animation: fadeIn 0.2s; flex: 1;}
+        .active { display: block; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 1rem; margin-top: 10px; }
+        .btn-main { background: var(--primary); color: white; }
+        .btn-outline { background: transparent; border: 2px solid var(--primary); color: var(--primary); }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 1rem; margin-top: 5px;}
+    </style>
+</head>
+<body onload="initApp()">
+
+<div class="app-container">
+    
+    <div id="screen-welcome" class="screen active">
+        <div style="text-align: center; margin-top: 80px;">
+            <h1 style="color: var(--primary); letter-spacing: 2px;">BOB CRICKET</h1>
+            <p>Professional Live Scorer</p>
+            <button class="btn btn-main" onclick="showAuth()">UMPIRE LOGIN (EMAIL)</button>
+            <button class="btn btn-sub" style="margin-top: 15px; background: #e67e22;" onclick="startAsViewer()">WATCH LIVE MATCH</button>
+        </div>
+    </div>
+
+    <div id="screen-auth" class="screen">
+        <h3>Umpire Verification</h3>
+        <p style="font-size: 0.9rem; color: #666;">Enter your email to receive a secure login link.</p>
+        <div id="email-input-group">
+            <label>Email Address</label>
+            <input type="email" id="umpire-email" placeholder="umpire@example.com">
+            <button class="btn btn-main" id="btn-send-link" onclick="sendEmailLink()">SEND LOGIN LINK</button>
+        </div>
+        <div id="status-message" style="margin-top: 20px; font-weight: bold; color: var(--primary); text-align: center;"></div>
+        <button class="btn btn-outline" style="margin-top:20px;" onclick="location.reload()">BACK</button>
+    </div>
+
+    </div>
+
+<script>
+    // 1. FIREBASE CONFIG
+    const firebaseConfig = {
+        apiKey: "AIzaSyCl4yV8H85ccjwIRyJarpSJAFdpNb7ihjE",
+        authDomain: "bob-badvel-cricket-live-score.firebaseapp.com",
+        projectId: "bob-badvel-cricket-live-score",
+        databaseURL: "https://bob-badvel-cricket-live-score-default-rtdb.firebaseio.com",
+        storageBucket: "bob-badvel-cricket-live-score.firebasestorage.app",
+        messagingSenderId: "603235755104",
+        appId: "1:603235755104:web:15b665c17975f270fecf05"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const auth = firebase.auth();
+    let isUmpire = false;
+
+    function initApp() {
+        // CHECK IF RETURNING FROM EMAIL LINK
+        if (auth.isSignInWithEmailLink(window.location.href)) {
+            let email = window.localStorage.getItem('emailForSignIn');
+            if (!email) {
+                email = window.prompt('Please provide your email for confirmation');
+            }
+            auth.signInWithEmailLink(email, window.location.href)
+                .then((result) => {
+                    window.localStorage.removeItem('emailForSignIn');
+                    isUmpire = true;
+                    // Switch to Umpire Hub
+                    showScreen('screen-umpire-hub');
+                })
+                .catch((error) => {
+                    alert("Error signing in: " + error.message);
+                });
+        }
+    }
+
+    function showScreen(id) { 
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+    }
+
+    function showAuth() { showScreen('screen-auth'); }
+
+    // 2. EMAIL LINK LOGIC
+    function sendEmailLink() {
+        const email = document.getElementById('umpire-email').value;
+        const actionCodeSettings = {
+            // This URL must be your GitHub Live Link
+            url: window.location.href, 
+            handleCodeInApp: true
+        };
+
+        auth.sendSignInLinkToEmail(email, actionCodeSettings)
+            .then(() => {
+                window.localStorage.setItem('emailForSignIn', email);
+                document.getElementById('email-input-group').style.display = 'none';
+                document.getElementById('status-message').innerText = "✅ Login link sent! Please check your email inbox (and spam folder).";
+            })
+            .catch((error) => {
+                console.error(error);
+                alert("Error: " + error.message);
+            });
+    }
+
+    // [Include all your existing Match Logic functions: setupSquads, startMatch, addBall, etc.]
+</script>
+</body>
+</html>
