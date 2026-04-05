@@ -235,19 +235,32 @@
     }
 
     // --- AUTH LOGIC ---
-    function showAuth() { showScreen('screen-auth'); }
+    function showAuth() 
 
-    function sendOTP() {
-        const phone = document.getElementById('phone-number').value;
-        auth.signInWithPhoneNumber(phone, window.recaptchaVerifier)
-            .then((result) => {
-                confirmationResult = result;
-                document.getElementById('phone-input-group').style.display = 'none';
-                document.getElementById('otp-input-group').style.display = 'block';
-                alert("OTP Sent!");
-            }).catch(err => alert(err.message));
+function sendOTP() {
+    // Get the phone number and remove any accidental spaces
+    let phone = document.getElementById('phone-number').value.trim();
+    
+    // If the user just typed 10 digits, automatically add the +91 code
+    if (phone.length === 10 && !phone.startsWith('+')) {
+        phone = '+91' + phone;
+    } else if (!phone.startsWith('+')) {
+        alert("Please enter a valid 10-digit mobile number.");
+        return;
     }
 
+    // Now send to Firebase
+    auth.signInWithPhoneNumber(phone, window.recaptchaVerifier)
+        .then((result) => {
+            confirmationResult = result;
+            document.getElementById('phone-input-group').style.display = 'none';
+            document.getElementById('otp-input-group').style.display = 'block';
+            alert("OTP Sent! Check your SMS.");
+        }).catch(err => {
+            console.error(err);
+            alert("Error: " + err.message);
+        });
+}
     function verifyOTP() {
         const code = document.getElementById('otp-code').value;
         confirmationResult.confirm(code).then(() => {
