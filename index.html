@@ -80,11 +80,12 @@
         <button class="btn btn-outline" style="margin-top:20px;" onclick="location.reload()">BACK</button>
     </div>
 
-    <div id="screen-umpire-hub" class="screen">
-        <h2 style="color: var(--primary);">UMPIRE DASHBOARD</h2>
-        <button class="btn btn-main" onclick="showScreen('screen-teams')">START NEW MATCH</button>
-        <button class="btn btn-sub" style="margin-top: 15px;" onclick="showScreen('screen-presquad')">PLAYERS SQUAD</button>
-    </div>
+<div id="screen-umpire-hub" class="screen">
+    <h2 style="color: var(--primary);">UMPIRE DASHBOARD</h2>
+    <button class="btn btn-main" onclick="showScreen('screen-teams')">START NEW MATCH</button>
+    <button class="btn btn-outline" style="margin-top: 15px;" onclick="resumeExistingMatch()">RESUME ONGOING MATCH</button>
+    <button class="btn btn-sub" style="margin-top: 15px;" onclick="showScreen('screen-presquad')">PLAYERS SQUAD</button>
+</div>
 
     <div id="screen-presquad" class="screen">
         <h2 style="color: var(--primary);">PLAYERS SQUAD</h2>
@@ -341,10 +342,10 @@
     }
 
     function saveState() {
-        if(isUmpire) {
-            database.ref('live_match_data').set(m);
-        }
+    if(isUmpire && m.isActive) {
+        database.ref('live_match_data').set(m);
     }
+}
 
     // ---------------------------------------------------------
     // 4. PRESQUAD & TEAM LOGIC
@@ -823,6 +824,38 @@
 
     function saveUndo() { if(!m.undoStack) m.undoStack=[]; m.undoStack.push(JSON.stringify({ runs: m.runs, wicks: m.wicks, balls: m.balls, sIdx: m.sIdx, nsIdx: m.nsIdx, bIdx: m.bIdx, thisOver: [...m.thisOver], overRuns: m.overRuns, oversHistory: m.oversHistory?JSON.parse(JSON.stringify(m.oversHistory)):[], extras: JSON.parse(JSON.stringify(m.extras)), batP: JSON.parse(JSON.stringify(m.batTeam.p)), bowlP: JSON.parse(JSON.stringify(m.bowlTeam.p)) })); }
     function handleUndo() { if(!m.undoStack || !m.undoStack.length) return; let s = JSON.parse(m.undoStack.pop()); m.runs=s.runs; m.wicks=s.wicks; m.balls=s.balls; m.sIdx=s.sIdx; m.nsIdx=s.nsIdx; m.bIdx=s.bIdx; m.thisOver=s.thisOver; m.overRuns=s.overRuns; m.oversHistory=s.oversHistory; m.extras=s.extras; m.batTeam.p=s.batP; m.bowlTeam.p=s.bowlP; updateUI(); saveState(); }
+
+// ---------------------------------------------------------
+    // 10. Resume Logic to your Script
+    // ---------------------------------------------------------
+
+function resumeExistingMatch() {
+    database.ref('live_match_data').once('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data && data.isActive) {
+            m = data; // Sync local match object with database
+            isUmpire = true;
+            document.getElementById('umpire-controls').style.display = 'grid';
+            document.getElementById('match-nav').style.display = 'flex';
+            
+            // Re-bind the live listener so the UI stays updated
+            database.ref('live_match_data').on('value', (snap) => {
+                const liveData = snap.val();
+                if(liveData) {
+                    m = liveData;
+                    updateUI();
+                }
+            });
+
+            showScreen('screen-main');
+            updateUI();
+            alert("Match Resumed Successfully!");
+        } else {
+            alert("No active match found to resume.");
+        }
+    });
+}
+
 </script>
 </body>
 </html>
