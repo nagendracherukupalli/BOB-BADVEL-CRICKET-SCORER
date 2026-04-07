@@ -253,13 +253,25 @@
     <h3>Wicket Details</h3>
     <label>Dismissal</label>
     <select id="wicket_type" class="form-group" onchange="toggleWicketHelp()">
-        <option value="Bowled">Bowled</option><option value="Caught">Caught</option><option value="LBW">LBW</option><option value="Stumped">Stumped</option><option value="Run Out">Run Out</option>
+        <option value="Bowled">Bowled</option>
+        <option value="Caught">Caught</option>
+        <option value="LBW">LBW</option>
+        <option value="Stumped">Stumped</option>
+        <option value="Run Out">Run Out</option>
+        <option value="Hit Wicket">Hit Wicket</option>
     </select>
     <div id="wicket_helper_div" style="display:none"><label id="wicket_helper_label">Fielder</label><select id="wicket_fielder_select" class="form-group"></select></div>
+    
     <div id="ro_side_div" style="display:none;">
         <label>Who got out?</label><select id="ro_victim" class="form-group"></select>
+        <label>Which end did the Run Out occur?</label>
+        <select id="ro_victim_side" class="form-group">
+            <option value="striker">Striker End</option>
+            <option value="nonstriker">Non-Striker End</option>
+        </select>
         <label>Runs completed before run out?</label><input type="number" id="run_out_runs" value="0" class="form-group">
     </div>
+    
     <div id="next_bat_div"><label>Next Batsman</label><select id="next_bat_select" class="form-group"></select></div>
     <button class="btn btn-main" onclick="confirmOut()">CONFIRM WICKET</button>
     <button class="btn btn-sub" onclick="closeModal('modal-out')">CANCEL</button>
@@ -287,9 +299,6 @@
 </div></div>
 
 <script>
-    // ---------------------------------------------------------
-    // 1. FIREBASE SETUP
-    // ---------------------------------------------------------
     const firebaseConfig = {
         apiKey: "AIzaSyCl4yV8H85ccjwIRyJarpSJAFdpNb7ihjE",
         authDomain: "bob-badvel-cricket-live-score.firebaseapp.com",
@@ -304,9 +313,6 @@
     const database = firebase.database();
     let isUmpire = false;
 
-    // ---------------------------------------------------------
-    // 2. CORE MATCH DATA & SANITIZATION
-    // ---------------------------------------------------------
     let preSquadPool = [];
     let m = {
         tA: { n: "", p: [] }, tB: { n: "", p: [] }, batTeam: null, bowlTeam: null,
@@ -316,7 +322,6 @@
         undoStack: [], firstInnData: null, tossWinner: null, tossDec: null
     };
 
-    // Firebase notoriously deletes empty arrays. This securely rebuilds them so score buttons never crash.
     function sanitizeMatchData(data) {
         if (!data) return data;
         data.thisOver = data.thisOver ? Object.values(data.thisOver) : [];
@@ -330,9 +335,6 @@
         return data;
     }
 
-    // ---------------------------------------------------------
-    // 3. INIT & AUTH LOGIC
-    // ---------------------------------------------------------
     function initApp() { initPreSquad(); }
 
     function showScreen(id) { 
@@ -372,7 +374,6 @@
         });
     }
 
-    // --- VIEWER MENU LOGIC ---
     function openViewerMenu() {
         showScreen('screen-viewer-menu');
         
@@ -463,9 +464,6 @@
         }
     }
 
-    // ---------------------------------------------------------
-    // 4. PRESQUAD, TEAM & MIDGAME LOGIC
-    // ---------------------------------------------------------
     function initPreSquad() {
         preSquadPool = JSON.parse(localStorage.getItem('bob_presquad')) || [];
         const container = document.getElementById('presquad-inputs');
@@ -501,13 +499,11 @@
         for(let i=0; i<15; i++) h += `<select class="form-group pA" onchange="updateSquadDropdowns()"></select><select class="form-group pB" onchange="updateSquadDropdowns()"></select>`;
         document.getElementById('player-inputs').innerHTML = h;
         
-        // Strict assignment for Toss values
         document.getElementById('opt1').value = m.tA.n; document.getElementById('opt1').innerText = m.tA.n;
         document.getElementById('opt2').value = m.tB.n; document.getElementById('opt2').innerText = m.tB.n;
         
         updateSquadDropdowns();
         
-        // Restore values if navigating back
         const pAs = document.querySelectorAll('.pA'), pBs = document.querySelectorAll('.pB');
         if(m.tA.p) m.tA.p.forEach((p, i) => { if(pAs[i]) pAs[i].value = p.n; });
         if(m.tB.p) m.tB.p.forEach((p, i) => { if(pBs[i]) pBs[i].value = p.n; });
@@ -570,7 +566,7 @@
     }
 
     function saveSquadsAndReturn() {
-        const pAs = document.querySelectorAll('.pA'), pBs = document.querySelectorAll('.pB');
+        const pAs = document.querySelectorAll('.pA'); const pBs = document.querySelectorAll('.pB');
         
         pAs.forEach(sel => {
             if(sel.value && !m.tA.p.find(p => p.n === sel.value)) {
@@ -607,9 +603,6 @@
         }
     }
 
-    // ---------------------------------------------------------
-    // 5. RULES & OPENERS
-    // ---------------------------------------------------------
     function toggleLimitFields() { document.getElementById('limit-fields').style.display = document.getElementById('limit_toggle').checked ? 'block' : 'none'; }
     function validateOversLimit() {
         const matchOvers = parseInt(document.getElementById('m_overs').value);
@@ -633,7 +626,6 @@
         m.rules.rebowl = document.getElementById('rebowl_toggle').checked;
         m.rules.singleBat = document.getElementById('single_bat_toggle').checked;
         
-        // Strict mapping ensures accurate opener options
         m.batTeam = (dec === 'bat' && win === m.tA.n) || (dec === 'bowl' && win === m.tB.n) ? m.tA : m.tB;
         m.bowlTeam = (m.batTeam === m.tA) ? m.tB : m.tA;
         updateOpenerDropdowns(); showScreen('screen-openers');
@@ -672,9 +664,6 @@
         updateUI(); saveState();
     }
 
-    // ---------------------------------------------------------
-    // 6. SCORE UPDATING UI
-    // ---------------------------------------------------------
     function updateUI() {
         if(!m.batTeam) return;
         document.getElementById('ui-vs').innerHTML = `${m.tA.n} vs ${m.tB.n} <span class="live-badge">LIVE</span>`;
@@ -734,9 +723,6 @@
         return false;
     }
 
-    // ---------------------------------------------------------
-    // 7. SCORING ACTIONS (UMPIRE ONLY)
-    // ---------------------------------------------------------
     function addBall(r) {
         saveUndo(); m.runs += r; m.balls++; m.overRuns += r; 
         m.batTeam.p[m.sIdx].r += r; m.batTeam.p[m.sIdx].b++;
@@ -809,7 +795,7 @@
         const type = document.getElementById('wicket_type').value;
         const fielderDiv = document.getElementById('wicket_helper_div');
         const roDiv = document.getElementById('ro_side_div');
-        if (type === 'Bowled' || type === 'LBW') { fielderDiv.style.display = 'none'; roDiv.style.display = 'none'; }
+        if (type === 'Bowled' || type === 'LBW' || type === 'Hit Wicket') { fielderDiv.style.display = 'none'; roDiv.style.display = 'none'; }
         else if (type === 'Run Out') { fielderDiv.style.display = 'block'; roDiv.style.display = 'block'; }
         else { fielderDiv.style.display = 'block'; roDiv.style.display = 'none'; }
     }
@@ -822,21 +808,21 @@
         const bowlerName = m.bowlTeam.p[m.bIdx].n;
         let nIdx = parseInt(document.getElementById('next_bat_select').value); if (isNaN(nIdx)) nIdx = -1;
         let outIdx = m.sIdx, roRuns = 0, wktDesc = type;
+        
+        let origStriker = m.sIdx;
 
         if (type === 'Run Out') {
             outIdx = parseInt(document.getElementById('ro_victim').value);
             roRuns = parseInt(document.getElementById('run_out_runs').value) || 0;
-            m.runs += roRuns; m.overRuns += roRuns; m.batTeam.p[m.sIdx].r += roRuns; // Runs always go to current striker
+            m.runs += roRuns; m.overRuns += roRuns; m.batTeam.p[m.sIdx].r += roRuns; 
             wktDesc = `(Run out) ${fielder}`; m.batTeam.p[outIdx].dismissal = wktDesc;
-            
-            // CROSS THE BATSMEN based on completed runs before subbing new player
-            if (roRuns % 2 !== 0 && m.nsIdx !== -1) swapStriker(); 
         } else {
             m.bowlTeam.p[m.bIdx].bw++;
             if (type === 'Bowled') wktDesc = `b. ${bowlerName}`;
             else if (type === 'Caught') wktDesc = (fielder === bowlerName) ? `c. & b. ${bowlerName}` : `c. ${fielder} b. ${bowlerName}`;
             else if (type === 'LBW') wktDesc = `lbw b. ${bowlerName}`;
             else if (type === 'Stumped') wktDesc = `st. ${fielder} b. ${bowlerName}`;
+            else if (type === 'Hit Wicket') wktDesc = `hit wicket b. ${bowlerName}`;
             m.batTeam.p[m.sIdx].dismissal = wktDesc;
         }
 
@@ -844,15 +830,31 @@
         m.wicks++; m.balls++; m.bowlTeam.p[m.bIdx].bb++; m.batTeam.p[m.sIdx].b++;
         
         let labelTxt = 'W'; if(type === 'Run Out' && roRuns > 0) labelTxt = `W+${roRuns}`;
-        m.thisOver.push({ val: 'W', type: 'wicket', label: labelTxt, striker: m.batTeam.p[m.sIdx].n, dismissalInfo: wktDesc });
+        m.thisOver.push({ val: 'W', type: 'wicket', label: labelTxt, striker: m.batTeam.p[origStriker].n, dismissalInfo: wktDesc });
 
         const totalBatsmen = m.batTeam.p.filter(p => p.n.trim() !== "").length;
         const allOut = m.wicks >= (m.rules.singleBat ? totalBatsmen : totalBatsmen - 1);
 
         if(!allOut) {
-            // New batsman inherits the spot of the out batsman (which handles run-out crossing naturally)
-            if (nIdx !== -1) { if (outIdx === m.sIdx) m.sIdx = nIdx; else m.nsIdx = nIdx; m.batTeam.p[nIdx].retired = false; }
-            else if (m.rules.singleBat) { if (outIdx === m.sIdx) { if (m.nsIdx !== -1) { m.sIdx = m.nsIdx; m.nsIdx = -1; } else m.sIdx = -1; } else { m.nsIdx = -1; } }
+            if (type === 'Run Out') {
+                let roSide = document.getElementById('ro_victim_side').value;
+                let survIdx = (outIdx === origStriker) ? m.nsIdx : origStriker;
+                
+                if (nIdx !== -1) { 
+                    m.batTeam.p[nIdx].retired = false;
+                    if (roSide === 'striker') { m.sIdx = nIdx; m.nsIdx = survIdx; }
+                    else { m.nsIdx = nIdx; m.sIdx = survIdx; }
+                } else if (m.rules.singleBat) {
+                    if (roSide === 'striker') { m.sIdx = survIdx; m.nsIdx = -1; }
+                    else { m.sIdx = survIdx; m.nsIdx = -1; }
+                }
+            } else {
+                if (nIdx !== -1) { 
+                    m.sIdx = nIdx; m.batTeam.p[nIdx].retired = false; 
+                } else if (m.rules.singleBat) {
+                    m.sIdx = m.nsIdx; m.nsIdx = -1;
+                }
+            }
         }
 
         closeModal('modal-out');
@@ -890,9 +892,6 @@
         }, 300);
     }
 
-    // ---------------------------------------------------------
-    // 8. OVERS & MATCH FLOW
-    // ---------------------------------------------------------
     function checkOverEnd() {
         if(m.balls > 0 && m.balls % 6 === 0) {
             if(m.overRuns === 0) m.bowlTeam.p[m.bIdx].m++; m.prevBIdx = m.bIdx;
@@ -941,9 +940,6 @@
         updateOpenerDropdowns(); showScreen('screen-openers'); saveState();
     }
 
-    // ---------------------------------------------------------
-    // 9. HISTORY & SUMMARY
-    // ---------------------------------------------------------
     function openHistoryPage() { 
         showScreen('screen-history'); 
         renderHistory(); 
@@ -953,7 +949,6 @@
         const container = document.getElementById('history_content');
         let h = '';
 
-        // BATSMAN CARD
         h += `<details open><summary style="font-size:1.1rem;">Batsman Card</summary><table class="stats-table" style="width: 100%;"><thead><tr><th>Batter</th><th>R(B)</th><th>SR</th></tr></thead><tbody>`;
         m.batTeam.p.forEach(p => {
             if (p.b > 0 || p.out || p.retired || p.r > 0) {
@@ -964,7 +959,6 @@
         });
         h += `</tbody></table></details>`;
 
-        // BOWLER PERFORMANCE
         h += `<details open style="margin-top:10px;"><summary style="font-size:1.1rem;">Bowler Performance</summary><table class="stats-table" style="width: 100%;"><thead><tr><th>Bowler</th><th>O-M-R-W</th><th>Eco</th></tr></thead><tbody>`;
         m.bowlTeam.p.forEach(p => {
             if (p.bb > 0) {
@@ -974,7 +968,6 @@
         });
         h += `</tbody></table></details>`;
 
-        // OVERS HISTORY
         h += `<details style="margin-top:10px;"><summary style="font-size:1.1rem;">Overs History</summary>`;
         let allOvers = m.oversHistory ? [...m.oversHistory] : []; 
         if (m.thisOver && m.thisOver.length > 0) allOvers.push({ bowler: m.bowlTeam.p[m.bIdx].n, balls: m.thisOver, runs: m.overRuns });
@@ -991,7 +984,6 @@
         });
         h += `</details>`;
 
-        // EXTRAS
         h += `<details style="margin-top:10px;"><summary style="font-size:1.1rem;">Extras Summary</summary><table class="stats-table" style="width: 100%;"><tbody>`;
         h += `<tr><td><strong>Wides:</strong></td><td>${m.extras.wd}</td></tr><tr><td><strong>No Balls:</strong></td><td>${m.extras.nb}</td></tr><tr class="total-row"><td><strong>Total Extras:</strong></td><td>${m.extras.total}</td></tr>`;
         h += `</tbody></table></details>`;
@@ -1016,7 +1008,6 @@
         return h + `</tbody></table></details>`;
     }
 
-    // --- NEW PUBLISH LOGIC ---
     function endMatch() {
         let win = "";
         if (m.runs >= m.target) win = `${m.batTeam.n} Won!`; else if (m.runs < m.target - 1) win = `${m.bowlTeam.n} Won!`; else win = "Match Tied!";
